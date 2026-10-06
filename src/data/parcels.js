@@ -1,7 +1,26 @@
-// Data ilustrasi, bukan data pertanahan atau koordinat geografis resmi.
-export const parcels = [
-  { id: 'KRM-001', area: 420, use: 'Permukiman', status: 'Terdata', points: '200,160 355,135 370,255 220,280' },
-  { id: 'KRM-002', area: 610, use: 'Kebun', status: 'Perlu verifikasi', points: '380,130 550,105 570,230 395,255' },
-  { id: 'KRM-003', area: 380, use: 'Permukiman', status: 'Terdata', points: '225,310 375,285 395,405 245,435' },
-  { id: 'KRM-004', area: 850, use: 'Lahan terbuka', status: 'Perlu verifikasi', points: '410,285 580,260 605,385 430,415' },
+export const landUses = [
+  { name: 'Permukiman', percent: 42, color: '#ed817c' },
+  { name: 'Perkebunan', percent: 24, color: '#42a878' },
+  { name: 'Ladang / Tegalan', percent: 13, color: '#e9ba5d' },
+  { name: 'Hutan / Vegetasi', percent: 9, color: '#28735d' },
+  { name: 'Sawah', percent: 5, color: '#9ccc68' },
+  { name: 'Fasilitas & Jalan', percent: 4, color: '#9b90ce' },
+  { name: 'Lainnya', percent: 3, color: '#94a7b8' },
 ]
+export const regionalAreaHa = 4120
+// Titik pusat perkiraan untuk orientasi prototype, bukan batas administratif resmi.
+export const initialCenter = [-2.691, 118.895]
+// Semua geometri dan atribut bidang di bawah sintetis, bukan hasil survei.
+export const parcels = Array.from({ length: 21 }, (_, index) => {
+  const row = Math.floor(index / 7)
+  const col = index % 7
+  const lat = -2.697 + row * .004
+  const lng = 118.885 + col * .003
+  return {
+    id: `KRM-${String(index + 1).padStart(4, '0')}`,
+    area: 54507 + index * 1237,
+    use: landUses[index % 7].name,
+    status: index % 2 ? 'Perlu verifikasi' : 'Terdata',
+    coordinates: [[lat, lng], [lat + .0023, lng + .0002], [lat + .0025, lng + .0022], [lat + .0001, lng + .002]],
+  }
+})
