@@ -21,6 +21,11 @@ export const parcels = Array.from({ length: 21 }, (_, index) => {
     area: 54507 + index * 1237,
     use: landUses[index % 7].name,
     status: index % 2 ? 'Perlu verifikasi' : 'Terdata',
+    // Status prototype saja; bukan catatan pajak atau penerima bantuan resmi.
+    taxStatus: index % 2 ? 'Belum' : 'Sudah',
+    ...(landUses[index % 7].name === 'Permukiman'
+      ? { bltStatus: index % 2 ? 'Bukan Penerima' : 'Penerima' }
+      : {}),
     coordinates: [[lat, lng], [lat + .0023, lng + .0002], [lat + .0025, lng + .0022], [lat + .0001, lng + .002]],
   }
 })
