@@ -1,134 +1,108 @@
 import { useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import ParcelDetails from './ParcelDetails.jsx'
-import { initialCenter, landUses } from '../data/parcels.js'
-import { gisOverlays, satelliteProvider } from '../config/map.js'
+import { initialCenter } from '../data/parcels.js'
+import { satelliteProvider } from '../config/map.js'
+import { parcelCenter } from '../services/parcelSearch.js'
 
-export default function MapPanel({ parcels, selectedId, onSelect, filter, onFilter }) {
+export default function MapPanel({ parcels, selectedId, onSelect, candidates, userLocation, resetToken, onReset, onLocate, panelOpen }) {
   const container = useRef(null)
-  const instance = useRef(null)
+  const mapRef = useRef(null)
   const polygons = useRef(new Map())
-  const tile = useRef(null)
   const previous = useRef(null)
-  const activePopup = useRef(null)
   const callbacks = useRef({ onSelect })
   callbacks.current = { onSelect }
-  const [popupHost, setPopupHost] = useState(null)
-  const [layerMenu, setLayerMenu] = useState(false)
-  const [layers, setLayers] = useState({ satellite: true, parcels: true, use: true, boundary: true, roads: true, rivers: true })
   const [tileStatus, setTileStatus] = useState('loading')
-  const selected = parcels.find(p => p.id === selectedId)
-  const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const tile = useRef(null)
+  const [parcelVisible, setParcelVisible] = useState(true)
+  const [optionsOpen, setOptionsOpen] = useState(false)
+  const [online, setOnline] = useState(navigator.onLine)
+  const smooth = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : .45
 
   useEffect(() => {
-    const map = L.map(container.current, { zoomControl: false, scrollWheelZoom: true }).setView(initialCenter, 15)
-    instance.current = map
-    const imagery = L.tileLayer(satelliteProvider.url, { attribution: satelliteProvider.attribution, maxZoom: satelliteProvider.maxZoom }).addTo(map)
-    tile.current = imagery
-    imagery.on('tileload', () => setTileStatus('ready'))
-    imagery.on('tileerror', () => setTileStatus('error'))
-    L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map)
-    const pane = map.createPane('parcelPane')
-    pane.style.zIndex = 450
+    const map = L.map(container.current, { zoomControl: false }).setView(initialCenter, 15)
+    mapRef.current = map
+    if (window.innerWidth < 768) map.panBy([0, Math.round(map.getSize().y * .22)], { animate: false })
+    let loaded = 0
+    tile.current = L.tileLayer(satelliteProvider.url, { attribution: satelliteProvider.attribution, maxZoom: satelliteProvider.maxZoom }).addTo(map)
+    tile.current.on('loading', () => { loaded = 0; setTileStatus('loading') })
+    tile.current.on('tileload', () => { loaded++; setTileStatus('ready') })
+    tile.current.on('load', () => setTileStatus(loaded ? 'ready' : 'error'))
+    const pane = map.createPane('parcelPane'); pane.style.zIndex = 450
+    L.control.scale({ imperial: false, position: 'bottomright' }).addTo(map)
     parcels.forEach(parcel => {
-      const polygon = L.polygon(parcel.coordinates, { pane: 'parcelPane', weight: 1.5 }).addTo(map)
+      const polygon = L.polygon(parcel.coordinates, { pane: 'parcelPane', color: '#3f719a', weight: 1.5, fillColor: '#9bc3df', fillOpacity: .1 }).addTo(map)
       polygon.on('click', () => callbacks.current.onSelect(parcel.id))
-      polygon.on('mouseover', () => polygon.setStyle({ weight: 3 }))
-      polygon.on('mouseout', () => polygon.setStyle({ weight: polygon.getElement()?.classList.contains('selected-parcel') ? 3 : 1.5 }))
       const element = polygon.getElement()
-      element.setAttribute('tabindex', '0')
-      element.setAttribute('role', 'button')
-      element.setAttribute('aria-label', `Pilih bidang ${parcel.id}`)
-      L.DomEvent.on(element, 'keydown', event => {
-        if (event.key === 'Enter' || event.key === ' ') { L.DomEvent.stop(event); callbacks.current.onSelect(parcel.id) }
-      })
+      element.setAttribute('tabindex', '0'); element.setAttribute('role', 'button'); element.setAttribute('aria-label', `Lihat informasi bidang ${parcel.id}`)
+      L.DomEvent.on(element, 'keydown', event => { if (event.key === 'Enter' || event.key === ' ') { L.DomEvent.stop(event); callbacks.current.onSelect(parcel.id) } })
       polygons.current.set(parcel.id, polygon)
     })
-    const observer = new ResizeObserver(() => map.invalidateSize())
-    observer.observe(container.current)
-    return () => { observer.disconnect(); map.remove(); instance.current = null; polygons.current.clear(); tile.current = null }
+    const observer = new ResizeObserver(() => map.invalidateSize()); observer.observe(container.current)
+    const connect = () => setOnline(navigator.onLine)
+    window.addEventListener('online', connect); window.addEventListener('offline', connect)
+    return () => { observer.disconnect(); window.removeEventListener('online', connect); window.removeEventListener('offline', connect); map.remove(); mapRef.current = null; polygons.current.clear() }
   }, [parcels])
 
   useEffect(() => {
-    const map = instance.current
-    if (!map) return
-    if (layers.satellite) tile.current.addTo(map)
-    else tile.current.remove()
+    const map = mapRef.current
     parcels.forEach(parcel => {
       const polygon = polygons.current.get(parcel.id)
-      if (layers.parcels) polygon.addTo(map)
+      if (parcelVisible || selectedId === parcel.id || candidates.some(p => p.id === parcel.id)) polygon.addTo(map)
       else polygon.remove()
-      const focused = parcel.id === selectedId
-      const faded = (filter !== 'Semua' && parcel.use !== filter) || (selectedId && !focused)
-      const color = layers.use ? landUses.find(use => use.name === parcel.use).color : '#54c5ef'
-      polygon.setStyle({ color: focused ? '#c9f5ff' : color, fillColor: color, weight: focused ? 3 : 1.5, opacity: faded ? .25 : 1, fillOpacity: faded ? .055 : focused ? .5 : .25 })
-      polygon.getElement()?.classList.toggle('selected-parcel', focused)
-      polygon.getElement()?.setAttribute('aria-pressed', String(focused))
-      if (focused) polygon.bringToFront()
+      const selected = selectedId === parcel.id
+      const candidate = candidates.some(p => p.id === parcel.id)
+      polygon.setStyle({ color: selected ? '#185d9d' : candidate ? '#296eac' : '#527b9c', weight: selected ? 3 : 1.5, fillColor: '#7bb5df', fillOpacity: selected ? .25 : candidate ? .18 : .06, opacity: selectedId && !selected ? .3 : 1 })
+      polygon.getElement()?.classList.toggle('selected-parcel', selected)
+      polygon.getElement()?.setAttribute('aria-pressed', String(selected))
+      if (selected) polygon.bringToFront()
     })
-  }, [filter, selectedId, layers, parcels])
+  }, [selectedId, candidates, parcelVisible, parcels])
 
   useEffect(() => {
-    const map = instance.current
-    const added = gisOverlays.filter(layer => layer.data && layers[layer.key]).map(layer => L.geoJSON(layer.data, { style: layer.style }).addTo(map))
-    return () => added.forEach(layer => layer.remove())
-  }, [layers])
-
-  useEffect(() => {
-    const map = instance.current
-    if (!map) return
-    let popup
-    let host
-    if (selected) {
+    const map = mapRef.current
+    if (selectedId) {
       if (!previous.current) previous.current = { center: map.getCenter(), zoom: map.getZoom() }
-      const polygon = polygons.current.get(selected.id)
-      map.flyToBounds(polygon.getBounds(), { maxZoom: 16, paddingTopLeft: [40, 330], paddingBottomRight: [40, 35], duration: reducedMotion() ? 0 : .45 })
-      host = document.createElement('div')
-      popup = L.popup({ closeButton: false, autoPan: false, maxWidth: 300, offset: [0, -12], className: 'parcel-callout', closeOnClick: false, closeOnEscapeKey: false }).setLatLng(polygon.getBounds().getCenter()).setContent(host).openOn(map)
-      activePopup.current = popup
-      setPopupHost(host)
-    } else {
-      setPopupHost(null)
-      if (previous.current) { map.flyTo(previous.current.center, previous.current.zoom, { duration: reducedMotion() ? 0 : .45 }); previous.current = null }
+      const bounds = polygons.current.get(selectedId).getBounds()
+      const mobile = window.matchMedia('(max-width: 767px)').matches
+      map.flyToBounds(bounds, { maxZoom: 16, paddingTopLeft: mobile ? [35, 40] : [panelOpen ? 420 : 40, 65], paddingBottomRight: mobile ? [35, 320] : [60, 60], duration: smooth() })
+    } else if (previous.current) {
+      map.flyTo(previous.current.center, previous.current.zoom, { duration: smooth() }); previous.current = null
     }
-    return () => { if (popup) map.removeLayer(popup); activePopup.current = null }
-  }, [selected])
+  }, [selectedId])
 
   useEffect(() => {
-    if (!popupHost) return
-    const frame = requestAnimationFrame(() => activePopup.current?.update())
-    // React portal content is populated after Leaflet first measures the popup.
-    const popup = activePopup.current
-    const observer = new ResizeObserver(() => popup?.update())
-    observer.observe(popupHost)
-    return () => { cancelAnimationFrame(frame); observer.disconnect() }
-  }, [popupHost])
+    const map = mapRef.current
+    const markers = candidates.map((parcel, index) => {
+      const marker = L.marker(parcelCenter(parcel), { icon: L.divIcon({ className: 'candidate-marker', html: `<span>${index + 1}</span>`, iconSize: [32, 32] }) }).addTo(map)
+      marker.getElement().setAttribute('aria-label', `Lihat kandidat ${index + 1}`)
+      marker.on('click', () => callbacks.current.onSelect(parcel.id))
+      return marker
+    })
+    if (candidates.length && !selectedId) map.flyToBounds(L.latLngBounds(candidates.flatMap(p => p.coordinates)), { paddingTopLeft: window.innerWidth >= 768 ? [420, 60] : [30, 50], paddingBottomRight: window.innerWidth >= 768 ? [60, 60] : [30, 300], maxZoom: 16, duration: smooth() })
+    return () => markers.forEach(marker => marker.remove())
+  }, [candidates])
 
-  function resetView() {
+  useEffect(() => {
+    if (!userLocation) return
+    const map = mapRef.current
+    const circle = L.circle(userLocation.position, { radius: userLocation.accuracy, color: '#327cb0', weight: 1, fillOpacity: .08 }).addTo(map)
+    const marker = L.circleMarker(userLocation.position, { radius: 7, color: '#fff', weight: 3, fillColor: '#236ca9', fillOpacity: 1 }).addTo(map)
+    map.flyTo(userLocation.position, 16, { duration: smooth() })
+    return () => { circle.remove(); marker.remove() }
+  }, [userLocation])
+
+  useEffect(() => {
+    if (!resetToken) return
     previous.current = null
-    onSelect(null)
-    onFilter('Semua')
-    instance.current.flyTo(initialCenter, 15, { duration: reducedMotion() ? 0 : .45 })
-  }
-  function toggle(key) {
-    if (key === 'parcels' && layers.parcels) onSelect(null)
-    setLayers(current => ({ ...current, [key]: !current[key] }))
-  }
-  // Search also restores parcel visibility after the parcel layer was hidden.
-  useEffect(() => { if (selectedId) setLayers(current => current.parcels ? current : { ...current, parcels: true }) }, [selectedId])
+    mapRef.current.flyTo(initialCenter, 15, { duration: smooth() })
+  }, [resetToken])
 
-  return <section className="map-workspace" aria-label="Peta satelit interaktif Karema">
-    <div ref={container} className="leaflet-map" />
-    <div className="map-location"><span className="location-dot" /><div><strong>KAREMA</strong><small>Kelurahan • Kecamatan Mamuju</small></div><span className="north">↑ N</span></div>
-    <div className="map-controls"><button aria-label="Zoom in" onClick={() => instance.current.zoomIn()}>+</button><button aria-label="Zoom out" onClick={() => instance.current.zoomOut()}>−</button><button onClick={resetView} title="Kembali ke tampilan awal">↺ <span>Reset View</span></button><button aria-expanded={layerMenu} onClick={() => setLayerMenu(value => !value)}>▱ <span>Layers</span></button></div>
-    {layerMenu && <div className="layer-menu"><strong>Layer peta</strong>{[{ key: 'satellite', name: 'Satellite Imagery' }, ...gisOverlays.slice(0, 1), { key: 'parcels', name: 'Bidang Tanah' }, { key: 'use', name: 'Penggunaan Tanah' }, ...gisOverlays.slice(1)].map(layer => {
-      const unavailable = 'data' in layer && !layer.data
-      return <label key={layer.key}><input type="checkbox" checked={!unavailable && layers[layer.key]} disabled={unavailable} onChange={() => toggle(layer.key)} /><span>{layer.name}{unavailable && <small>Menunggu GeoJSON resmi</small>}</span></label>
-    })}</div>}
-    {layers.satellite && tileStatus !== 'ready' && <div className="tile-notice" role="status">{tileStatus === 'error' ? 'Citra satelit gagal dimuat. Periksa koneksi atau izin akses penyedia, lalu coba lagi.' : 'Memuat citra satelit…'}{tileStatus === 'error' && <button onClick={() => { setTileStatus('loading'); tile.current.redraw() }}>Coba lagi</button>}</div>}
-    <div className="map-caption">Geometri bidang sintetis · pusat peta perkiraan · batas resmi belum tersedia</div>
-    {popupHost && selected && createPortal(<ParcelDetails parcel={selected} onClear={() => onSelect(null)} />, popupHost)}
+  return <section className="map-workspace" aria-label="Peta satelit Kelurahan Karema">
+    <div className="leaflet-map" ref={container} />
+    <div className="map-label">Kelurahan Karema <small>Pusat peta perkiraan · bidang contoh</small></div>
+    <div className="map-controls"><div className="zoom-controls"><button onClick={() => mapRef.current.zoomIn()} aria-label="Perbesar peta">+</button><button onClick={() => mapRef.current.zoomOut()} aria-label="Perkecil peta">−</button></div><button onClick={onLocate}>⌖ <span>Lokasi Saya</span></button><button onClick={onReset}>↺ <span>Kembali ke Karema</span></button><button aria-expanded={optionsOpen} onClick={() => setOptionsOpen(v => !v)}>▱ <span>Tampilan peta</span></button></div>
+    {optionsOpen && <div className="map-options"><label><input type="checkbox" checked={parcelVisible} onChange={e => setParcelVisible(e.target.checked)} /> Tampilkan bidang contoh</label><p>Citra satelit menjadi latar peta. Batas wilayah resmi belum tersedia.</p></div>}
+    {(!online || tileStatus !== 'ready') && <div className="map-notice" role="status">{!online ? 'Koneksi internet terputus. Pencarian contoh tetap tersedia. Sambungkan kembali untuk memuat peta.' : tileStatus === 'loading' ? 'Memuat peta…' : 'Peta sementara belum dapat dimuat. Anda tetap bisa mencari bidang contoh.'}{tileStatus === 'error' || !online ? <button onClick={() => { setTileStatus('loading'); tile.current.redraw() }}>Coba muat peta lagi</button> : null}</div>}
   </section>
 }

@@ -1,10 +1,10 @@
-# Karema Land Information Dashboard
+# Peta Digital Interaktif — Karema
 
-Prototype WebGIS React + Vite untuk Kelurahan Karema, Kecamatan Mamuju, Kabupaten Mamuju, Sulawesi Barat. Proyek ini melanjutkan dashboard yang sudah ada.
+Prototype layanan informasi bidang tanah untuk masyarakat Kelurahan Karema, Kecamatan Mamuju, Kabupaten Mamuju, Sulawesi Barat. Melanjutkan proyek React + Vite yang sama dengan peta satelit Leaflet.
 
 ## Menjalankan
 
-Gunakan Node.js 24 LTS (atau Node.js 20.19+ / 22.12+) dan npm.
+Gunakan Node.js 24 LTS (atau 20.19+ / 22.12+) dan npm.
 
 ```bash
 npm ci
@@ -18,39 +18,40 @@ npm run build
 npm run preview
 ```
 
-## Fitur
+## Alur prototype
 
-- Peta satelit nyata Esri World Imagery melalui Leaflet, dengan pan, zoom, reset, skala, dan atribusi.
-- 21 polygon sintetis, KRM-0001 sampai KRM-0021; klik atau keyboard untuk membuka detail bidang, fokus zoom dan highlight dengan bayangan halus.
-- Detail mengambang menggunakan geographic popup yang tertambat pada pusat bidang. Tutup detail untuk kembali ke view sebelum pemilihan; Reset View kembali ke pusat awal dan menghapus filter.
-- Pencarian ID tidak peka huruf besar/kecil. KRM-0099 hanya contoh placeholder, belum ada dalam dataset; ID yang tidak ada menampilkan pesan.
-- Filter kategori dan indikator analitik terhubung ke peta. Bidang kategori lain memudar, tetap dapat dipilih.
-- Toggle satelit, bidang, dan pewarnaan penggunaan tanah. Pencarian/pemilihan melalui daftar mengaktifkan kembali layer bidang yang tersembunyi.
-- Tata letak desktop dan seluler, fokus keyboard dan dukungan reduced motion.
+- Beranda: pilih pencarian NIB, lokasi perangkat, atau lokasi + perkiraan luas. Peta manual adalah pilihan sekunder.
+- NIB: gunakan nomor demo `02003`–`02023` atau ID `KRM-0001`–`KRM-0021`. Nomor demo bukan NIB resmi. Kesalahan memberikan pilihan coba lagi, pencarian lokasi, dan panduan.
+- Tanpa NIB: pencarian tempat masih simulasi, menggunakan `Area contoh Selatan`, `Area contoh Tengah`, dan `Area contoh Utara`. `Karema` menampilkan pilihan ketiga area. Masukkan perkiraan luas bidang (bidang contoh sekitar 54.000–80.000 m²). Pencarian memakai toleransi ±30%; jika terlalu banyak, persempit pencarian atau pilih tiga bidang terdekat berdasarkan luas. Tidak ada klaim kandidat merupakan tanah pengguna.
+- Lokasi perangkat: akses GPS hanya setelah tombol ditekan, tidak disimpan dan tidak dikirim ke server aplikasi. Lingkaran menunjukkan ketelitian GPS. Jika ketelitian lebih dari 150 m, tawarkan coba lagi atau pencarian lokasi. Pilih maksimal tiga bidang contoh dalam radius 1,5 km dari titik tengah bidang.
+- Detail: NIB contoh, ID, luas, penggunaan tanah, kelurahan, kecamatan. Tidak ada informasi Pajak/BLT, identitas pemilik atau data pribadi.
+- Petunjuk Arah: membuka Google Maps menuju titik tengah polygon dummy. Koordinat tujuan dikirim ke Google hanya ketika pengguna membuka tautan tersebut. Tidak ada perencana rute internal.
+- Panduan: empat topik pertanahan dengan bahasa sederhana, tanpa pelaporan atau kesimpulan hukum.
+- Informasi Wilayah: luas dummy 4.120 ha dan distribusi penggunaan tanah 42/24/13/9/5/4/3%. Statistik berbasis luas wilayah, bukan jumlah bidang. Statistik tidak tampil pada beranda.
 
-## Data dan batas penggunaan
+## Tampilan
 
-**Semua geometri bidang, luas bidang, statistik regional, dan persentase penggunaan tanah adalah DATA DUMMY.** Tidak ada identitas pemilik atau data pribadi. Pusat peta [-2.691, 118.895] merupakan perkiraan orientasi kawasan Karema, bukan koordinat batas resmi yang telah diverifikasi.
+Satu panel kontekstual di kiri untuk desktop/tablet, atau bottom sheet yang dapat diringkas pada ponsel. Peta tetap menjadi latar utama. Ketuk bidang untuk fokus otomatis. Tombol kembali/tutup menghapus pilihan dan mengembalikan view sebelumnya. “Kembali ke Karema” memulai ulang pencarian dan view.
 
-Statistik regional memakai skenario luas 4.120 ha dan 1.248 bidang; hanya 21 bidang sintetis divisualisasikan. Persentase 42/24/13/9/5/4/3 dihitung sebagai pembagian luas wilayah dummy, bukan jumlah polygon. Dataset analitik regional terpisah dari sampel bidang: polygon sintetis tidak menggambarkan distribusi resmi.
+## Data dan integrasi
 
-Batas kelurahan, jalan dan sungai belum tersedia. Toggle layer tersebut dinonaktifkan dan diberi keterangan; tidak ada geometri administratif atau jalan rekaan. Tambahkan GeoJSON resmi ke `gisOverlays` di `src/config/map.js` untuk mengaktifkannya (GeoJSON memakai urutan longitude, latitude). Koordinat polygon Leaflet di `src/data/parcels.js` memakai latitude, longitude.
+Seluruh geometri, NIB, luas bidang, label lokasi contoh dan statistik adalah **DATA DUMMY**, bukan informasi resmi. Pusat peta [-2.691, 118.895] hanya perkiraan orientasi wilayah. Batas administratif resmi belum disediakan. GPS bukan pengukuran pertanahan dan peta bukan bukti kepemilikan.
 
-## Penyedia citra
+Citra satelit nyata menggunakan Esri World Imagery dan memerlukan akses ke `server.arcgisonline.com`. Cloud ini pernah mengembalikan HTTP 403; aplikasi memberikan pemberitahuan dan tombol muat ulang, tanpa citra palsu pengganti. Gunakan `.env.example` sebagai konfigurasi penyedia XYZ alternatif dan atribusinya. Jangan menyimpan rahasia dalam `VITE_*` karena dibundel ke browser.
 
-Konfigurasi ada di `src/config/map.js`. Salin `.env.example` ke `.env.local` bila perlu mengganti penyedia XYZ beserta atribusinya, lalu restart Vite. Ikuti ketentuan dan atribusi penyedia; jangan memasukkan kredensial rahasia ke variabel `VITE_*` karena variabel ini dibundel ke browser.
+`src/services/parcelSearch.js` menjadi batas integrasi untuk pencarian tempat dan bidang. Ganti `searchPlaces` dengan adapter layanan tempat bila tersedia; saat ini tidak ada Google Places, API key atau pencarian jalan nyata. `directionsUrl` menggunakan URL Google Maps publik. `src/config/regions.js` menyiapkan struktur wilayah agar wilayah lain dapat ditambahkan setelah datanya tersedia; prototype hanya Karema.
 
-Citra memerlukan koneksi ke `server.arcgisonline.com`. Pada validasi mesin cloud, layanan mengembalikan HTTP 403; draft allowlist sudah ditambahkan tetapi belum membuktikan citra dapat diakses. Aplikasi menampilkan pemberitahuan dan tombol coba lagi jika citra gagal. Tidak memakai gambar satelit palsu sebagai fallback.
+Lokasi perangkat memerlukan HTTPS atau localhost dan izin browser. Penolakan, ketelitian rendah, lokasi di luar data, NIB tidak ada, tempat tidak ada, hasil terlalu banyak, hasil kosong, koneksi terputus dan kegagalan citra mempunyai pesan serta langkah berikutnya.
 
 ## Struktur
 
-- `src/App.jsx`: dashboard, pencarian, pilihan bidang dan filter kategori.
-- `src/components/MapPanel.jsx`: lifecycle Leaflet, layer, navigasi dan geographic popup.
-- `src/components/ParcelDetails.jsx`: panel informasi bidang tanpa data pribadi.
-- `src/components/LandUseAnalytics.jsx`: donut dan filter berdasarkan kategori luas.
-- `src/data/parcels.js`: statistik dummy, kategori, pusat perkiraan dan polygon sintetis.
-- `src/config/map.js`: penyedia satelit dan slot GeoJSON resmi.
-- `src/styles.css`: visual biru/cyan terang dan layout responsif.
-- `.env.example`: konfigurasi penyedia opsional.
-
-Build produksi serta pengujian browser Chromium berhasil: klik polygon, buka/tutup detail, pencarian ID, filter kategori, toggle layer, reset, ID tidak ditemukan, dan layout seluler tanpa overflow horizontal. Tidak ada error JavaScript runtime pada pengujian tersebut. Validasi pemuatan citra harus dilakukan lagi setelah akses penyedia tersedia; jangan menganggap citra atau batas administratif sudah diverifikasi.
+- `src/App.jsx`: navigasi dan alur panel publik, form, hasil, status loading/error.
+- `src/components/MapPanel.jsx`: peta Leaflet, pemilihan bidang, kandidat bernomor, GPS dan kontrol sederhana.
+- `src/components/ParcelDetails.jsx`: informasi publik dan tautan arah/panduan.
+- `src/components/LandUseAnalytics.jsx`: statistik ringan khusus Informasi Wilayah.
+- `src/data/parcels.js`: bidang dan statistik dummy.
+- `src/data/guides.js`: isi panduan umum.
+- `src/services/parcelSearch.js`: pencarian NIB, kandidat, jarak, adapter tempat dan URL arah.
+- `src/config/regions.js`: definisi wilayah prototype.
+- `src/config/map.js`: penyedia satelit dan slot data GIS resmi untuk pengembangan berikutnya.
+- `src/styles.css`: tampilan layanan publik mobile-first.
