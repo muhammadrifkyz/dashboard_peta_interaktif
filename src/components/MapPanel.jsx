@@ -23,14 +23,14 @@ export default function MapPanel({ parcels, selectedId, onSelect, candidates, us
   const smooth = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : .45
 
   useEffect(() => {
-    const map = L.map(container.current, { zoomControl: false }).setView(initialCenter, 15)
+    const map = L.map(container.current, { zoomControl: false, maxZoom: satelliteProvider.maxZoom }).setView(initialCenter, 15)
     mapRef.current = map
     if (window.innerWidth < 768) map.panBy([0, Math.round(map.getSize().y * .22)], { animate: false })
-    let loaded = 0
-    tile.current = L.tileLayer(satelliteProvider.url, { attribution: satelliteProvider.attribution, maxZoom: satelliteProvider.maxZoom }).addTo(map)
-    tile.current.on('loading', () => { loaded = 0; setTileStatus('loading') })
-    tile.current.on('tileload', () => { loaded++; setTileStatus('ready') })
-    tile.current.on('load', () => setTileStatus(loaded ? 'ready' : 'error'))
+    let failed = 0
+    tile.current = L.tileLayer(satelliteProvider.url, { attribution: satelliteProvider.attribution, maxNativeZoom: satelliteProvider.maxNativeZoom, maxZoom: satelliteProvider.maxZoom }).addTo(map)
+    tile.current.on('loading', () => { failed = 0; setTileStatus('loading') })
+    tile.current.on('tileerror', () => { failed++; setTileStatus('error') })
+    tile.current.on('load', () => setTileStatus(failed ? 'error' : 'ready'))
     const pane = map.createPane('parcelPane'); pane.style.zIndex = 450
     const focusPane = map.createPane('selectedParcelPane'); focusPane.style.zIndex = 460
     selectedRenderer.current = L.svg({ pane: 'selectedParcelPane' })
@@ -142,7 +142,7 @@ export default function MapPanel({ parcels, selectedId, onSelect, candidates, us
       {dataStatus === 'loading' && <div>Memuat data bidang...</div>}
       {dataStatus === 'error' && <div>Data bidang belum dapat dimuat.<button onClick={onRetryData}>Coba muat data lagi</button></div>}
       {dataStatus === 'empty' && <div>Data bidang kosong atau belum memiliki geometri yang valid.<button onClick={onRetryData}>Coba muat data lagi</button></div>}
-      {!online ? <div>Koneksi internet terputus. Data yang sudah dimuat tetap dapat digunakan.</div> : tileStatus === 'loading' ? <div>Memuat peta…</div> : tileStatus === 'error' ? <div>Peta sementara belum dapat dimuat. Data bidang tetap dapat digunakan.</div> : null}
+      {!online ? <div>Koneksi internet terputus. Data yang sudah dimuat tetap dapat digunakan.</div> : tileStatus === 'loading' ? <div>Memuat peta…</div> : tileStatus === 'error' ? <div>Citra tidak tersedia pada tingkat zoom ini. Data bidang tetap dapat digunakan.</div> : null}
       {(tileStatus === 'error' || !online) && <button onClick={() => { setTileStatus('loading'); tile.current.redraw() }}>Coba muat peta lagi</button>}
     </div>}
   </section>

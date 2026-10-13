@@ -1,7 +1,10 @@
 export const satelliteProvider = {
-  url: import.meta.env.VITE_SATELLITE_TILE_URL || 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  url: import.meta.env.VITE_SATELLITE_TILE_URL || 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?blankTile=false',
   attribution: import.meta.env.VITE_SATELLITE_ATTRIBUTION || 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
-  maxZoom: 19,
+  // Esri tilemap confirms imagery across Lebani at z18; z19 is unavailable.
+  // Cache metadata lists higher levels globally, but coverage is regional.
+  maxNativeZoom: 18,
+  maxZoom: 20,
 }
 // Isi dengan GeoJSON resmi saat tersedia. Jangan membuat batas/jalan/sungai rekaan.
 export const gisOverlays = [
