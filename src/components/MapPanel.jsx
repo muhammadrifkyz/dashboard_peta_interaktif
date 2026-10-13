@@ -44,7 +44,7 @@ export default function MapPanel({ parcels, selectedId, onSelect, candidates, us
   function parcelStyle(feature) {
     const selected = callbacks.current.selectedId === feature.properties.id_bidang
     const candidate = callbacks.current.candidates.some(parcel => parcel.id === feature.properties.id_bidang)
-    return { color: selected ? '#185d9d' : candidate ? '#296eac' : '#527b9c', weight: selected ? 3 : mapRef.current.getZoom() < 15 ? .65 : 1.2, fillColor: '#7bb5df', fillOpacity: selected ? .25 : candidate ? .18 : .06, opacity: callbacks.current.selectedId && !selected ? .3 : .9 }
+    return { color: selected ? '#73d7f3' : candidate ? '#61b9de' : '#549ec0', weight: selected ? 3 : mapRef.current.getZoom() < 15 ? .65 : 1.2, fillColor: '#5aafcf', fillOpacity: selected ? .25 : candidate ? .18 : .06, opacity: callbacks.current.selectedId && !selected ? .3 : .9 }
   }
   function viewPadding() {
     const mobile = window.matchMedia('(max-width: 767px)').matches
@@ -90,7 +90,7 @@ export default function MapPanel({ parcels, selectedId, onSelect, candidates, us
     const parcel = parcels.find(parcel => parcel.id === selectedId)
     if (!parcel) return
     // Only the selected polygon uses SVG for the existing subtle depth highlight.
-    const highlight = L.geoJSON(parcel.feature, { pane: 'selectedParcelPane', interactive: false, renderer: selectedRenderer.current, style: { color: '#185d9d', weight: 3, fillColor: '#7bb5df', fillOpacity: .18, className: 'selected-parcel' } }).addTo(mapRef.current)
+    const highlight = L.geoJSON(parcel.feature, { pane: 'selectedParcelPane', interactive: false, renderer: selectedRenderer.current, style: { color: '#73d7f3', weight: 3, fillColor: '#5aafcf', fillOpacity: .18, className: 'selected-parcel' } }).addTo(mapRef.current)
     highlight.bringToFront()
     return () => highlight.remove()
   }, [selectedId, parcels])
