@@ -87,3 +87,14 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline-color:var(--acc
 .parcel-detail{animation:parcel-detail-enter 240ms ease-out 80ms both}
 @keyframes parcel-detail-enter{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 @media(prefers-reduced-motion:reduce){.parcel-detail{animation:none}}
+
+/* Fade one composited Canvas, not 2,656 individual features; SVG focus stays crisp. */
+.leaflet-parcel-pane canvas{opacity:1;transition:opacity 180ms ease-out}
+.leaflet-map[data-selection-active="true"] .leaflet-parcel-pane canvas{opacity:.8}
+.selected-parcel{filter:drop-shadow(0 3px 2px #00000070)}
+@media(min-width:768px){
+  .context-panel:has(.parcel-detail){border-color:#2e3540;box-shadow:0 4px 16px #0000002e}
+  .context-panel:has(.parcel-detail) .panel-content{padding:20px}
+}
+@media(min-width:1101px){.context-panel:has(.parcel-detail){width:360px}}
+@media(prefers-reduced-motion:reduce){.leaflet-parcel-pane canvas{transition:none}}

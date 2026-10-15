@@ -48,7 +48,8 @@ export default function MapPanel({ parcels, selectedId, selectionExit, onSelect,
     const selected = callbacks.current.selectedId === feature.properties.id_bidang
     const candidate = callbacks.current.candidates.some(parcel => parcel.id === feature.properties.id_bidang)
     const preview = hovered.current === feature.properties.id_bidang && !selected
-    return { color: selected ? '#73d7f3' : preview ? '#8acfe5' : candidate ? '#61b9de' : '#549ec0', weight: selected ? 3 : preview ? 2 : mapRef.current.getZoom() < 15 ? .65 : 1.2, fillColor: '#5aafcf', fillOpacity: selected ? .16 : preview ? .12 : candidate ? .18 : callbacks.current.selectedId ? .04 : .06, opacity: selected || preview ? 1 : callbacks.current.selectedId ? .6 : .9 }
+    // Compensate the selected fill for the 0.8 Canvas fade; its SVG outline stays full strength.
+    return { color: selected ? '#73d7f3' : preview ? '#8acfe5' : candidate ? '#61b9de' : '#549ec0', weight: selected ? 3 : preview ? 2 : mapRef.current.getZoom() < 15 ? .65 : 1.2, fillColor: '#5aafcf', fillOpacity: selected ? .2 : preview ? .12 : candidate ? .18 : callbacks.current.selectedId ? .04 : .06, opacity: selected || preview ? 1 : callbacks.current.selectedId ? .6 : .9 }
   }
   function viewPadding() {
     const mapRect = container.current.getBoundingClientRect()
@@ -206,7 +207,7 @@ export default function MapPanel({ parcels, selectedId, selectionExit, onSelect,
   }, [resetToken])
 
   return <section className="map-workspace" aria-label="Peta satelit bidang Lebani">
-    <div className="leaflet-map" ref={container} data-parcel-count={parcels.length} />
+    <div className="leaflet-map" ref={container} data-parcel-count={parcels.length} data-selection-active={Boolean(selectedId)} />
     <div className="map-label">Lebani (cek) <small>Data bidang dalam verifikasi</small></div>
     <div className="map-controls"><div className="zoom-controls"><button onClick={() => mapRef.current.zoomIn()} aria-label="Perbesar peta">+</button><button onClick={() => mapRef.current.zoomOut()} aria-label="Perkecil peta">−</button></div><button onClick={onLocate}>⌖ <span>Lokasi Saya</span></button><button onClick={onReset}>↺ <span>Kembali ke Wilayah</span></button><button aria-expanded={optionsOpen} onClick={() => setOptionsOpen(v => !v)}>▱ <span>Tampilan peta</span></button></div>
     {optionsOpen && <div className="map-options"><label><input type="checkbox" checked={parcelVisible} onChange={e => setParcelVisible(e.target.checked)} /> Tampilkan bidang</label><p>Citra satelit menjadi latar peta. Batas wilayah resmi belum tersedia.</p></div>}
