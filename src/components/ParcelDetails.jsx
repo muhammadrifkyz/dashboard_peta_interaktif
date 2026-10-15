@@ -6,7 +6,7 @@ export default function ParcelDetails({ parcel, onGuide }) {
     <span className="section-label">DETAIL BIDANG · DATA DALAM VERIFIKASI</span>
     <h2 id="detail-heading" tabIndex={-1}>Informasi bidang</h2>
     <p>Periksa lokasi di peta dan cocokkan dengan dokumen yang Anda miliki.</p>
-    <dl className="detail-list">
+    <dl className="detail-list" aria-live="polite" aria-atomic="true">
       <div><dt>ID Bidang</dt><dd>{parcel.id}</dd></div>
       <div><dt>Nomor Bidang</dt><dd>{parcel.number || 'Belum tersedia'}</dd></div>
       <div><dt>Luas</dt><dd>{parcel.area == null ? 'Belum tersedia' : `${parcel.area.toLocaleString('id-ID')} m²`}</dd></div>

@@ -14,6 +14,7 @@ export default function App() {
   const [skipped, setSkipped] = useState(0)
   const [screen, setScreen] = useState('home')
   const [selectedId, setSelectedId] = useState(null)
+  const [selectionExit, setSelectionExit] = useState('stay')
   const [returnScreen, setReturnScreen] = useState('home')
   const [collapsed, setCollapsed] = useState(false)
   const [nib, setNib] = useState('')
@@ -50,9 +51,10 @@ export default function App() {
     if (!panelOpen || collapsed) return
     panelRef.current?.scrollTo(0, 0)
     panelRef.current?.querySelector('h2')?.focus({ preventScroll: true })
-  }, [screen, selectedId, collapsed, guideIndex])
+  }, [screen, collapsed, guideIndex])
 
-  function go(next) {
+  function go(next, restoreView = false) {
+    setSelectionExit(restoreView ? 'restore' : 'stay')
     actionVersion.current++
     setBusy(''); setError(''); setScreen(next); setCollapsed(false)
     if (next !== 'detail' && next !== 'guide') setSelectedId(null)
@@ -63,16 +65,12 @@ export default function App() {
     actionVersion.current++
     setBusy(''); setError(''); setSelectedId(id); setScreen('detail'); setCollapsed(false)
   }
-  function closeDetail() { setSelectedId(null); go(returnScreen === 'detail' ? 'home' : returnScreen) }
+  function closeDetail() { setSelectedId(null); go(returnScreen === 'detail' ? 'home' : returnScreen, true) }
   function reset() { setSelectedId(null); setCandidates(emptyCandidates); setUserLocation(null); setResetToken(v => v + 1); go('home') }
   function openGuides() { setGuideIndex(null); go('guide') }
-  async function findNib(event) {
+  function findNib(event) {
     event.preventDefault()
-    const version = ++actionVersion.current
-    setBusy('Mencari bidang…'); setError('')
-    await new Promise(resolve => setTimeout(resolve, 250))
-    if (version !== actionVersion.current) return
-    setBusy('')
+    setError('')
     const matches = findParcels(nib, parcels)
     if (matches.length === 1) select(matches[0].id)
     else if (matches.length > 1) { setCandidates(matches); setResultSource('number'); setScreen('results') }
@@ -89,13 +87,9 @@ export default function App() {
     else if (found.length === 1) { setPlace(found[0]); setScreen('area') }
     else { setError('Ada beberapa lokasi yang mungkin sesuai. Pilih satu wilayah di bawah.'); setScreen('place') }
   }
-  async function findArea(event) {
+  function findArea(event) {
     event.preventDefault()
-    const version = ++actionVersion.current
-    setBusy('Mencari bidang…'); setError('')
-    await new Promise(resolve => setTimeout(resolve, 250))
-    if (version !== actionVersion.current) return
-    setBusy('')
+    setError('')
     const result = findCandidates(place, Number(area), parcels)
     setCandidates(result.parcels); setResultSource('guided')
     if (result.kind === 'many') setError('Masih terlalu banyak bidang yang mungkin sesuai. Persempit perkiraan luas atau pilih lokasi lain.')
@@ -138,7 +132,7 @@ export default function App() {
   return <div className={`public-app ${panelOpen ? 'panel-open' : ''}`}>
     <header className="app-header"><a className="brand" href="#" onClick={event => { event.preventDefault(); reset() }}><span className="brand-icon" aria-hidden="true">⌖</span><span><strong>PETA DIGITAL INTERAKTIF</strong><small>Wilayah data: {regionName}</small></span></a><nav aria-label="Navigasi utama"><button className={screen === 'home' ? 'active' : ''} onClick={reset}>Beranda</button><button className={['nib','place','area','results','location'].includes(screen) ? 'active' : ''} onClick={() => go('home')}>Cari Bidang</button><button className={screen === 'guide' ? 'active' : ''} onClick={openGuides}>Panduan</button><button className={screen === 'region' ? 'active' : ''} onClick={() => go('region')}>Informasi Wilayah</button></nav><span className="prototype">PROTOTYPE • DATA DALAM VERIFIKASI</span></header>
     <main className="public-workspace">
-      <MapPanel parcels={parcels} selectedId={selectedId} onSelect={select} candidates={candidates} userLocation={userLocation} resetToken={resetToken} onReset={reset} onLocate={() => go('location')} panelOpen={panelOpen} dataStatus={dataStatus} onRetryData={() => setRetryLoad(v => v + 1)} />
+      <MapPanel parcels={parcels} selectedId={selectedId} selectionExit={selectionExit} onSelect={select} candidates={candidates} userLocation={userLocation} resetToken={resetToken} onReset={reset} onLocate={() => go('location')} panelOpen={panelOpen} dataStatus={dataStatus} onRetryData={() => setRetryLoad(v => v + 1)} />
       {panelOpen ? <aside className={`context-panel ${collapsed ? 'collapsed' : ''}`} aria-label="Panel pencarian dan informasi bidang"><div className="panel-tools">{screen !== 'home' ? <button onClick={back}>← Kembali</button> : <span>{regionName}</span>}<div><button className="collapse-button" onClick={() => setCollapsed(v => !v)} aria-expanded={!collapsed}>{collapsed ? 'Buka panel' : 'Ringkas'}</button><button onClick={() => { setSelectedId(null); go('manual') }} aria-label="Tutup panel">Tutup ×</button></div></div><div className="panel-content" ref={panelRef} hidden={collapsed}>{skipped > 0 && <p className="small-note" role="status">{skipped} fitur tidak dapat ditampilkan; bidang valid tetap tersedia.</p>}
         {screen === 'home' && <><span className="section-label">PENCARIAN BIDANG TANAH</span><h2 tabIndex={-1}>Temukan Bidang Tanah</h2><p>Cari bidang tanah tanpa harus mencarinya satu per satu di peta.</p><div className="main-actions"><button className="choice-button" onClick={() => go('nib')}><span className="choice-icon">▤</span><span><strong>Saya punya nomor bidang</strong><small>Cari nomor atau ID bidang</small></span><span>›</span></button><button className="choice-button" onClick={() => go('location')}><span className="choice-icon">⌖</span><span><strong>Saya sedang di lokasi tanah</strong><small>Temukan bidang di sekitar Anda</small></span><span>›</span></button><button className="choice-button" onClick={() => go('place')}><span className="choice-icon">⌕</span><span><strong>Saya tidak punya nomor bidang</strong><small>Cari dengan lokasi dan perkiraan luas</small></span><span>›</span></button></div>{manual}<p className="small-note">Data bidang Lebani masih dalam verifikasi, bukan penetapan resmi pertanahan. Tidak perlu membuat akun.</p></>}
         {screen === 'nib' && <><h2 tabIndex={-1}>Cari dengan nomor bidang</h2><p>Masukkan nomor bidang atau ID bidang dari data yang tersedia.</p><form onSubmit={findNib}><label htmlFor="nib">Nomor / ID Bidang</label><input id="nib" value={nib} onChange={e => setNib(e.target.value)} required autoComplete="off" placeholder="Contoh: 00001 atau LBN-0001" /><p className="small-note">Cari nomor 00001 atau ID LBN-0001. Nomor Bidang belum diverifikasi sebagai NIB.</p><button className="button primary" disabled={!!busy || dataStatus !== 'ready'}>Cari Bidang</button></form>{loading}<button className="text-button" aria-expanded={helpOpen} onClick={() => setHelpOpen(v => !v)}>Apa yang dimaksud nomor bidang?</button>{helpOpen && <div className="help-box"><strong>Nomor Bidang pada data ini</strong><p>Pencarian memakai atribut nomor atau ID bidang dari sumber GeoJSON Lebani. Arti nomor ini belum diverifikasi sebagai NIB. Jika nomor tidak diketahui, gunakan lokasi perangkat atau peta manual.</p></div>}</>}

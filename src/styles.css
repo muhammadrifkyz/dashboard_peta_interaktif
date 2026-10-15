@@ -82,3 +82,8 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline-color:var(--acc
 .leaflet-control-scale-line{background:#171a21ed;color:var(--text);border-color:var(--text-muted);text-shadow:none}
 .panel-content{scrollbar-color:#596777 var(--surface);scrollbar-width:thin}
 @media(max-width:767px){.app-header nav{border-top-color:var(--border)}}
+
+/* Restrained entrance only: changing the selected ID keeps this panel mounted. */
+.parcel-detail{animation:parcel-detail-enter 240ms ease-out 80ms both}
+@keyframes parcel-detail-enter{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.parcel-detail{animation:none}}
